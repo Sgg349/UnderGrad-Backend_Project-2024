@@ -1,18 +1,17 @@
-
 from flask import Flask, render_template, request, redirect, url_for, Response
 from pymongo import MongoClient
 from gridfs import GridFS
 from werkzeug.utils import secure_filename
 import os
+import certifi
+from bson.objectid import ObjectId
 
 app = Flask(__name__)
 
-
-client = MongoClient("mongodb+srv://sgg349:sgg349@cluster0.cbncjeu.mongodb.net/")
+client = MongoClient("mongodb+srv://itubedevs:enterpass@cluster0.cbncjeu.mongodb.net/", tlsCAFile=certifi.where())
 db = client["itubedb"]
-collection = db["usersss"]
+collection = db["uservid"]
 fs = GridFS(db)
-
 
 UPLOAD_FOLDER = 'temp'
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
@@ -37,19 +36,26 @@ def upload():
         file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
 
         with open(os.path.join(app.config['UPLOAD_FOLDER'], filename), 'rb') as f:
-            fs.put(f, filename=filename)
+            fs.put(f, filename=filename, content_type=file.content_type)
         os.remove(os.path.join(app.config['UPLOAD_FOLDER'], filename))
         return redirect(url_for('view_uploaded_videos'))
 
 @app.route('/videos')
 def view_uploaded_videos():
-
     uploaded_videos = [file for file in fs.find()]
     return render_template('index.html', uploaded_videos=uploaded_videos)
 
+@app.route('/video/<filename>')
+def serve_video(filename):
+    video_file = fs.find_one({'filename': filename})
+    if not video_file:
+        return "Video not found", 404
+    response = Response(video_file.read(), mimetype=video_file.content_type)
+    response.headers['Content-Disposition'] = f'inline; filename={video_file.filename}'
+    return response
 
 @app.route('/signin')
-def sigin():
+def signin():
     return render_template('Sign in page.html')
 
 @app.route('/signuppage', methods=['GET', 'POST'])
@@ -59,7 +65,6 @@ def signup():
 @app.route('/submit_signup', methods=['POST'])
 def submitsignupform():
     if request.method == 'POST':
-
         firstname = request.form['firstname']
         lastname = request.form['lastname']
         email = request.form['email']
@@ -75,18 +80,16 @@ def submitsignupform():
         }
 
         collection.insert_one(user_data)
-
         return render_template('homepage.html')
 
 @app.route('/video/<video_id>')
 def video(video_id):
-    video_file = fs.find_one({"filename": video_id})
+    video_file = fs.find_one({"_id": ObjectId(video_id)})
     if video_file is None:
         return 'Video not found', 404
-    response = Response(video_file.read(), mimetype='video/mp4')
+    response = Response(video_file.read(), mimetype=video_file.content_type)
+    response.headers['Content-Disposition'] = f'inline; filename={video_file.filename}'
     return response
 
 if __name__ == '__main__':
     app.run(debug=True)
-
-# Date: 15/04/2024, by -S.R.

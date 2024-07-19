@@ -645,5 +645,18 @@
       });
     </script>
     <script src="./static/js/pre-loader.js"></script>
+
+    <h1>Uploaded Videos</h1>
+    <ul>
+        {% for video in uploaded_videos %}
+            <li>
+                <video width="320" height="240" controls>
+                    <source src="{{ url_for('serve_video', filename=video) }}" type="video/mp4">
+                    Your browser does not support the video tag.
+                </video>
+            </li>
+        {% endfor %}
+    </ul>
+
   </body>
 </html>
